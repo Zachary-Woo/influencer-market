@@ -1,510 +1,428 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-const platforms = ["Instagram", "TikTok", "YouTube", "Pinterest", "LinkedIn"];
-
-const niches = [
-  "Beauty & Wellness",
-  "Food & Beverage",
-  "Travel",
-  "SaaS & Tech",
-  "Lifestyle",
-  "Parenting",
-  "Fashion",
-  "Creators & Education",
-];
-
-const audienceSizes = ["Nano (1k - 10k)", "Micro (10k - 50k)", "Mid-tier (50k - 250k)", "Macro (250k - 1M)"];
-
-const partnerLogos = ["SproutLab", "Nimbus SaaS", "Wildgrain", "Urban Trails", "BrightNest"];
-
-const stats = [
-  { value: "3.4x", label: "Avg. return vs paid social" },
-  { value: "48 hrs", label: "Concierge matching turnaround" },
-  { value: "12 hrs", label: "Average creator response time" },
-  { value: "96%", label: "Brands who renew after pilot" },
-  { value: "180+", label: "Verified creators onboard" },
-];
-
-type Influencer = {
+type MatchRecommendation = {
   name: string;
   handle: string;
-  avatar: string;
   platform: string;
   reach: string;
-  location: string;
-  rate: string;
   engagement: string;
-  specialties: string[];
-  highlights: string;
+  location: string;
+  whyItWorks: string;
+  deliverables: string;
 };
 
-const influencers: Influencer[] = [
+type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  author: string;
+  timestamp: string;
+  content: string;
+  matches?: MatchRecommendation[];
+};
+
+type TourStep = {
+  messageId: string;
+  title: string;
+  description: string;
+};
+
+type ActiveTour = TourStepWithPosition & { key: number };
+
+const conversation: ChatMessage[] = [
   {
-    name: "Sasha Flores",
-    handle: "@sashaflores",
-    avatar:
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80",
-    platform: "Instagram",
-    reach: "42k followers",
-    location: "Austin, TX",
-    rate: "$450 / Reel",
-    engagement: "6.8%",
-    specialties: ["Clean beauty", "Latina audience", "UGC"],
-    highlights: "Booked campaigns with Glossier, Honest Co., and Thrive Causemetics",
+    id: "m1",
+    role: "user",
+    author: "You",
+    timestamp: "10:12 AM",
+    content: "@Connexa Help me find verified local influencers to promote my new steakhouse in Orlando. Looking for authentic engagement and real ROI.",
   },
   {
-    name: "Jay Park",
-    handle: "@jaywalks",
-    avatar:
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&q=80",
-    platform: "TikTok",
-    reach: "65k followers",
-    location: "Seattle, WA",
-    rate: "$600 / TikTok",
-    engagement: "9.2%",
-    specialties: ["Outdoor gear", "Travel hacks", "PNW audience"],
-    highlights: "Generated 210k views for Patagonia’s spring micro-campaign",
+    id: "m2",
+    role: "assistant",
+    author: "Connexa",
+    timestamp: "10:12 AM",
+    content:
+      "I use agent based deep learning to match you with influencers who naturally fit your message and audience. I'll focus on verified local creators with authentic engagement to reduce fraud risk and maximize ROI.",
   },
   {
-    name: "Priya Nair",
-    handle: "@codedwithpriya",
-    avatar:
-      "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=400&q=80",
-    platform: "YouTube",
-    reach: "18k subscribers",
-    location: "Remote",
-    rate: "$950 / Integration",
-    engagement: "8.4%",
-    specialties: ["SaaS reviews", "Female founder stories", "Email marketing"],
-    highlights: "Recurring partner for Notion, MailerLite, and Webflow",
+    id: "m3",
+    role: "user",
+    author: "You",
+    timestamp: "10:13 AM",
+    content:
+      "Perfect. We want to reach local foodies who actually make reservations. Mid priced dining, chef driven stories. Budget around $500 per creator.",
   },
   {
-    name: "Noah Bennett",
-    handle: "@shotbybennett",
-    avatar:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80",
-    platform: "Photographer",
-    reach: "32 booked shoots / month",
-    location: "New York, NY",
-    rate: "$750 / Half-day",
-    engagement: "3-day turnaround",
-    specialties: ["Product lifestyle", "Cafés & hospitality", "35mm film look"],
-    highlights: "Preferred photographer for Milk Bar and Chamberlain Coffee",
+    id: "m4",
+    role: "assistant",
+    author: "Connexa",
+    timestamp: "10:14 AM",
+    content:
+      "Here are verified micro influencers with authentic local reach. Each has fraud detection screening, audience alignment with your brand, and proven ROI from similar campaigns.",
+    matches: [
+      {
+        name: "Maya Ortiz",
+        handle: "@tasteoforlando",
+        platform: "Instagram",
+        reach: "34k followers",
+        engagement: "7.6%",
+        location: "Winter Park, FL",
+        whyItWorks:
+          "Verified authentic audience of local foodies within 10 miles. Weekly Chef's Counter series drives strong reservation CTAs with documented conversion.",
+        deliverables: "1 Reel + 3 stories with reservations link | $425",
+      },
+      {
+        name: "Chris Devine",
+        handle: "@thedevinedish",
+        platform: "TikTok",
+        reach: "52k followers",
+        engagement: "8.9%",
+        location: "Orlando, FL",
+        whyItWorks:
+          "AI verified engagement from 25 to 44 professionals. Past steakhouse campaigns show 63% audience books weekday dinners within 2 weeks.",
+        deliverables: "1 TikTok + raw clips for ads | $540",
+      },
+      {
+        name: "Avery Lin",
+        handle: "@localplates",
+        platform: "YouTube Shorts",
+        reach: "18k subscribers",
+        engagement: "9.1%",
+        location: "Orlando, FL",
+        whyItWorks:
+          "Narrative driven chef interviews with tracked Google Maps conversion. Viewers save for business dinners with measurable attribution.",
+        deliverables: "1 Short + newsletter placement | $490",
+      },
+    ],
+  },
+  {
+    id: "m5",
+    role: "user",
+    author: "You",
+    timestamp: "10:15 AM",
+    content: "This is exactly what I need. Can you alert me when new verified Orlando food creators join?",
+  },
+  {
+    id: "m6",
+    role: "assistant",
+    author: "Connexa",
+    timestamp: "10:15 AM",
+    content:
+      "Done. I continuously monitor your campaign performance and influencer acquisition. You'll get alerts when verified creators match your audience profile or when performance signals spike.",
   },
 ];
 
+type TourStepWithPosition = TourStep & { position: "left" | "right" };
+
+const tourSteps: TourStepWithPosition[] = [
+  {
+    messageId: "m2",
+    title: "AI fraud detection & matching",
+    description: "Agent based deep learning matches brands with verified influencers to reduce fraud risk and misalignment.",
+    position: "left",
+  },
+  {
+    messageId: "m4",
+    title: "Verified local reach & ROI",
+    description: "Every creator is screened for authentic audiences with measurable conversion potential.",
+    position: "right",
+  },
+  {
+    messageId: "m6",
+    title: "AI powered concierge service",
+    description: "Continuous influencer acquisition and retention with automated performance monitoring.",
+    position: "right",
+  },
+];
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const renderWithMentions = (text: string) => {
+  const parts = text.split(/(@Connexa)/gi);
+  return parts.map((part, index) =>
+    part.toLowerCase() === "@connexa" ? (
+      <span key={`mention-${index}`} className="font-bold text-[#6b7aeb]">
+        {part}
+      </span>
+    ) : (
+      <span key={`text-${index}`}>{part}</span>
+    )
+  );
+};
+
 export default function Home() {
+  const [displayedMessages, setDisplayedMessages] = useState<ChatMessage[]>([]);
+  const [typingState, setTypingState] = useState<{ message: ChatMessage; content: string } | null>(null);
+  const [visibleMatches, setVisibleMatches] = useState<string[]>([]);
+  const [activeTour, setActiveTour] = useState<ActiveTour | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const tourCounter = useRef(0);
+
+  const tourLookup = useMemo(() => new Map(tourSteps.map((step) => [step.messageId, step])), []);
+  const visibleMatchesSet = useMemo(() => new Set(visibleMatches), [visibleMatches]);
+
+  useEffect(() => {
+    const node = scrollContainerRef.current;
+    if (!node) {
+      return;
+    }
+    node.scrollTo({ top: node.scrollHeight, behavior: "smooth" });
+  }, [displayedMessages, typingState]);
+
+  useEffect(() => {
+    if (!activeTour) {
+      return;
+    }
+    const timeout: ReturnType<typeof setTimeout> = setTimeout(() => setActiveTour(null), 5000);
+    return () => clearTimeout(timeout);
+  }, [activeTour]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const playConversation = async () => {
+      while (!cancelled) {
+        setDisplayedMessages([]);
+        setVisibleMatches([]);
+        setTypingState(null);
+        setActiveTour(null);
+        tourCounter.current = 0;
+
+        for (let i = 0; i < conversation.length; i++) {
+          const message = conversation[i];
+          const isLastMessage = i === conversation.length - 1;
+
+          if (cancelled) {
+            return;
+          }
+
+          if (message.role === "assistant") {
+            setTypingState({ message, content: "" });
+
+            let partial = "";
+            for (let j = 0; j < message.content.length; j += 1) {
+              if (cancelled) {
+                return;
+              }
+              partial += message.content[j];
+              setTypingState({ message, content: partial });
+
+              const char = message.content[j];
+              const punctuationDelay = char === "." || char === "!" || char === "?" ? 120 : char === "," ? 70 : 0;
+              await wait(22 + punctuationDelay);
+              if (cancelled) {
+                return;
+              }
+            }
+
+            await wait(120);
+            if (cancelled) {
+              return;
+            }
+
+            setDisplayedMessages((prev) => [...prev, message]);
+            setTypingState(null);
+
+            if (message.matches) {
+              await wait(200);
+              if (cancelled) {
+                return;
+              }
+              setVisibleMatches((prev) => (prev.includes(message.id) ? prev : [...prev, message.id]));
+              
+              setTimeout(() => {
+                const node = scrollContainerRef.current;
+                if (node) {
+                  node.scrollTo({ top: node.scrollHeight, behavior: "smooth" });
+                }
+              }, 50);
+              
+              await wait(220);
+              if (cancelled) {
+                return;
+              }
+            }
+          } else {
+            setDisplayedMessages((prev) => [...prev, message]);
+          }
+
+          const tour = tourLookup.get(message.id);
+          if (tour) {
+            tourCounter.current += 1;
+            setActiveTour({ ...tour, key: tourCounter.current });
+          }
+
+          const pause = message.role === "assistant" ? (message.matches ? 2300 : 1700) : 900;
+          const finalPause = isLastMessage ? pause + 2500 : pause;
+          await wait(finalPause);
+          if (cancelled) {
+            return;
+          }
+        }
+
+        await wait(3200);
+        if (cancelled) {
+          return;
+        }
+      }
+    };
+
+    playConversation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tourLookup]);
+
   return (
-    <div className="gradient-surface">
-      <section className="relative isolate overflow-hidden px-6 pb-20 pt-16 sm:px-10 lg:px-0">
-        <div className="absolute inset-x-0 top-12 flex justify-center opacity-60">
-          <div className="flex w-full max-w-5xl flex-wrap items-center justify-center gap-x-10 gap-y-4 text-xs font-medium uppercase tracking-[0.3em] text-foreground/50 sm:text-sm">
-            {partnerLogos.map((logo) => (
-              <span key={logo}>{logo}</span>
-            ))}
-          </div>
-        </div>
-        <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-12 pt-12 lg:flex-row lg:items-center">
-          <div className="flex-1 space-y-6">
-            <Badge className="rounded-full bg-primary/10 text-primary">
-              Beta access now open
+    <div className="min-h-screen bg-white text-[#0c0e10]">
+      <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 px-4 py-10 sm:px-8">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Image src="/connexa_logo.png" alt="Connexa" width={176} height={52} priority />
+            <Badge className="rounded-full bg-[#e2e4f3] text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-[#474b63]">
+              ChatGPT mock demo
             </Badge>
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Match with micro influencers who speak to your exact audience.
-            </h1>
-            <p className="max-w-xl text-lg text-foreground/75">
-              MicroMatch lets modern brands discover vetted creators, photographers,
-              and storytellers without the agency overhead. Filter by platform,
-              niche, audience size, budget, and location to build campaigns that convert.
-            </p>
-            <div className="flex flex-wrap items-center gap-4">
-              <Button size="lg">Start your brief</Button>
-              <Button variant="outline" size="lg">
-                View success stories
+          </div>
+          <p className="max-w-sm text-sm text-[#636a82]">
+            Watch Connexa pair brands with micro influencers - this loop mirrors how the ChatGPT app listing will feel.
+          </p>
+        </header>
+
+        <section className="relative flex flex-col overflow-hidden rounded-[2.5rem] border border-[#dfe2f0] bg-white shadow-[0_30px_90px_-40px_rgba(16,22,34,0.55)]" style={{ height: "calc(100vh - 180px)", minHeight: "500px" }}>
+          <div className="flex shrink-0 items-center justify-between border-b border-[#ebecf2] px-6 py-4">
+            <div className="space-y-1">
+              <p className="text-[0.7rem] uppercase tracking-[0.35em] text-[#82869a]">ChatGPT App Mock</p>
+              <h1 className="text-xl font-semibold text-[#121625]">Connexa Micro Match</h1>
+            </div>
+            <Badge className="rounded-full border border-[#d3d6e6] bg-[#f4f5fb] text-[0.7rem] font-semibold uppercase tracking-[0.25em] text-[#454a62]">
+              Powered by Connexa
+            </Badge>
+          </div>
+
+          <div className="relative flex-1 overflow-hidden bg-[#f3f4f8]">
+            <div ref={scrollContainerRef} className="h-full overflow-y-scroll px-4 py-8 sm:px-6 sm:py-10">
+              <div className="mx-auto flex w-full flex-col gap-6">
+                {displayedMessages.map((message) => {
+                  const isUser = message.role === "user";
+                  const showMatches = Boolean(message.matches && visibleMatchesSet.has(message.id));
+
+                  return (
+                    <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                      <div className={`max-w-full space-y-2 sm:max-w-[540px] ${isUser ? "text-right" : "text-left"}`}>
+                        <div className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-[#7a7f92]">
+                          <span>{message.author}</span>
+                          <span className="ml-2 font-normal tracking-normal text-[#a0a4b6]">{message.timestamp}</span>
+                        </div>
+                        <div
+                          className={`rounded-[1.75rem] px-5 py-4 text-[0.95rem] leading-relaxed shadow-sm ${
+                            isUser
+                              ? "bg-[#0c0e10] text-white"
+                              : "border border-[#e1e2ec] bg-white text-[#1c2030]"
+                          }`}
+                        >
+                          <p className="whitespace-pre-line">{renderWithMentions(message.content)}</p>
+                          {showMatches && message.matches && (
+                            <div className="mt-4 space-y-3">
+                              {message.matches.map((match) => (
+                                <div
+                                  key={match.handle}
+                                  className="rounded-2xl border border-[#d6d9e7] bg-[#fafbff] px-4 py-3 text-left text-sm text-[#252a3b]"
+                                >
+                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                      <p className="text-base font-semibold text-[#1a1e2e]">{match.name}</p>
+                                      <p className="text-xs uppercase tracking-[0.2em] text-[#7c8095]">
+                                        {match.platform} | {match.location}
+                                      </p>
+                                    </div>
+                                    <Badge className="rounded-full border border-[#ccd0e3] bg-white text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-[#474b63]">
+                                      {match.reach}
+                                    </Badge>
+                                  </div>
+                                  <div className="mt-3 grid gap-2 text-xs text-[#4a5065]">
+                                    <p>
+                                      <span className="font-semibold text-[#272c3e]">Why it works:</span> {match.whyItWorks}
+                                    </p>
+                                    <div className="flex flex-wrap gap-3">
+                                      <Badge className="rounded-full bg-[#0c0e10] px-3 py-1 text-[0.7rem] font-medium text-white">
+                                        Engagement {match.engagement}
+                                      </Badge>
+                                      <Badge
+                                        variant="outline"
+                                        className="rounded-full border-[#cbd0e7] bg-white px-3 py-1 text-[0.7rem] font-medium text-[#3f455d]"
+                                      >
+                                        {match.deliverables}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {typingState && (
+                  <div className="flex justify-start">
+                    <div className="max-w-full space-y-2 sm:max-w-[540px]">
+                      <div className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-[#7a7f92]">
+                        <span>{typingState.message.author}</span>
+                        <span className="ml-2 font-normal tracking-normal text-[#a0a4b6]">
+                          {typingState.message.timestamp}
+                        </span>
+                      </div>
+                      <div className="rounded-[1.75rem] border border-[#e1e2ec] bg-white px-5 py-4 text-[0.95rem] leading-relaxed text-[#1c2030] shadow-sm">
+                        <p className="whitespace-pre-line">
+                          {renderWithMentions(typingState.content)}
+                          <span className="ml-1 align-baseline text-[#c1c4d3]">|</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {activeTour && (
+              <div className={`pointer-events-none absolute top-6 hidden max-w-xs sm:block ${activeTour.position === "left" ? "left-4 md:left-8" : "right-4 md:right-8"}`}>
+                <div className="rounded-2xl border border-[#d7d9e6] bg-white p-4 shadow-lg transition-all duration-500">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-[#7a7f92]">Guided moment</p>
+                  <h3 className="mt-2 text-base font-semibold text-[#121625]">{activeTour.title}</h3>
+                  <p className="mt-1 text-sm text-[#575c70]">{activeTour.description}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="shrink-0 border-t border-[#ebecf2] bg-white px-4 py-5 sm:px-6">
+            <div className="flex items-center gap-3 rounded-[1.75rem] border border-[#d9dce7] bg-[#f8f9ff] px-4 py-3 text-sm text-[#7a8096]">
+              <span className="font-medium text-[#4e5370]">@Connexa</span>
+              <span className="hidden text-[#b1b5c6] sm:block">Describe your campaign goals while the demo loops in the background...</span>
+              <Button
+                size="icon"
+                className="ml-auto hidden rounded-full bg-[#0c0e10] text-white hover:bg-[#1c202c] sm:flex"
+              >
+                <span className="sr-only">Send message</span>
+                ↑
               </Button>
-              <div className="flex items-center gap-3 text-sm text-foreground/70">
-        <Image
-                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80"
-                  alt="Happy clients"
-                  width={44}
-                  height={44}
-                  className="size-11 rounded-full border-2 border-background object-cover"
-                />
-                <div>
-                  <p className="font-medium text-foreground/90">Trusted by 120+ growth teams</p>
-                  <p className="text-xs text-foreground/60">Avg. 3.4x higher ROI vs. paid social</p>
-                </div>
-              </div>
             </div>
-            <div className="grid gap-4 pt-2 sm:grid-cols-2 lg:grid-cols-5">
-              {stats.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="rounded-2xl border border-border/60 bg-background/80 p-4 shadow-sm"
-                >
-                  <p className="text-3xl font-semibold text-foreground">{stat.value}</p>
-                  <p className="text-xs uppercase tracking-wide text-foreground/60">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <aside className="flex-1">
-            <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/85 p-8 shadow-xl backdrop-blur">
-              <div className="absolute inset-x-8 -top-12 h-28 rounded-full bg-primary/20 blur-3xl" aria-hidden />
-              <div className="relative z-10 space-y-6">
-                <div className="grid gap-2">
-                  <span className="text-xs uppercase tracking-[0.3em] text-foreground/50">Smart brief builder</span>
-                  <h3 className="text-2xl font-semibold text-foreground">
-                    Specify what you need. We surface the right creators instantly.
-                  </h3>
-                </div>
-                <form className="grid gap-4">
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium text-foreground/80">Platform</label>
-                    <Select defaultValue="Instagram">
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select platform" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Social</SelectLabel>
-                          {platforms.map((platform) => (
-                            <SelectItem key={platform} value={platform}>
-                              {platform}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium text-foreground/80">Niche</label>
-                    <Select defaultValue="Beauty & Wellness">
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select niche" />
-                      </SelectTrigger>
-                      <SelectContent position="popper" align="start">
-                        <SelectGroup>
-                          <SelectLabel>Popular niches</SelectLabel>
-                          {niches.map((niche) => (
-                            <SelectItem key={niche} value={niche}>
-                              {niche}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium text-foreground/80">Audience size</label>
-                    <Select defaultValue="Micro (10k - 50k)">
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select audience size" />
-                      </SelectTrigger>
-                      <SelectContent position="popper" align="start">
-                        <SelectGroup>
-                          <SelectLabel>Creator tiers</SelectLabel>
-                          {audienceSizes.map((audience) => (
-                            <SelectItem key={audience} value={audience}>
-                              {audience}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium text-foreground/80">Budget per deliverable</label>
-                    <Select defaultValue="$500 - $1,000">
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select budget" />
-                      </SelectTrigger>
-                      <SelectContent position="popper" align="start">
-                        <SelectGroup>
-                          <SelectLabel>Typical ranges</SelectLabel>
-                          {["<$250", "$250 - $500", "$500 - $1,000", "$1,000 - $3,000", "$3,000+"]
-                            .map((budget) => (
-                              <SelectItem key={budget} value={budget}>
-                                {budget}
-                              </SelectItem>
-                            ))}
-                          <SelectSeparator />
-                          <SelectLabel>Enterprise</SelectLabel>
-                          <SelectItem value="Custom retainers">
-                            Custom retainers
-                          </SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button type="button" className="mt-2 w-full" size="lg">
-                    Discover matches
-                  </Button>
-                  <p className="text-center text-xs text-muted-foreground">
-                    On-demand concierge matching in under 48 hours.
-                  </p>
-                </form>
-                <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/80 p-4">
-                  <div className="relative size-10 overflow-hidden rounded-full border border-border/50">
-            <Image
-                      src="https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?auto=format&fit=crop&w=160&q=80"
-                      alt="Strategy team"
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="text-sm text-foreground/70">
-                    <p className="font-medium text-foreground/90">Concierge strategist</p>
-                    <p>&quot;We curate a shortlist that fits your goals, then handle outreach for you.&quot;</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </aside>
-        </div>
-      </section>
-
-      <section id="categories" className="bg-background/95 px-6 py-16 sm:px-10">
-        <div className="mx-auto w-full max-w-6xl space-y-12">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-3">
-              <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Curated creators for every stage of your funnel
-              </h2>
-              <p className="max-w-2xl text-base text-foreground/70">
-                Explore talent by platform, specialization, and creative format. Each profile is screened for brand
-                alignment, creative quality, and authentic engagement.
-              </p>
-            </div>
-            <Link href="#" className="text-sm font-medium text-primary transition hover:text-primary/80">
-              Download full roster
-            </Link>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {influencers.map((influencer) => (
-              <Card key={influencer.handle} className="group relative overflow-hidden border-border/60">
-                <div className="absolute inset-x-0 top-0 z-0 h-24 bg-gradient-to-b from-primary/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                <CardHeader className="relative z-10 grid grid-cols-[auto_1fr] gap-4">
-                  <div className="relative size-16 overflow-hidden rounded-xl border border-border/70">
-          <Image
-                      src={influencer.avatar}
-                      alt={influencer.name}
-                      fill
-                      className="object-cover"
-                      sizes="64px"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg font-semibold text-foreground">
-                      {influencer.name}
-                    </CardTitle>
-                    <CardDescription className="flex items-center gap-2 text-sm">
-                      <span>{influencer.handle}</span>
-                      <span className="text-foreground/30">•</span>
-                      <span>{influencer.location}</span>
-                    </CardDescription>
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      <Badge variant="outline" className="border-transparent bg-primary/10 text-xs text-primary">
-                        {influencer.platform}
-                      </Badge>
-                      <Badge variant="secondary" className="text-xs">
-                        {influencer.reach}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="relative z-10 space-y-4">
-                  <p className="text-sm text-foreground/75">{influencer.highlights}</p>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="rounded-lg border border-border/60 bg-muted/40 p-3">
-                      <span className="text-xs uppercase text-foreground/50">Engagement</span>
-                      <p className="mt-1 text-lg font-semibold text-foreground">{influencer.engagement}</p>
-                    </div>
-                    <div className="rounded-lg border border-border/60 bg-muted/40 p-3">
-                      <span className="text-xs uppercase text-foreground/50">Rate</span>
-                      <p className="mt-1 text-lg font-semibold text-foreground">{influencer.rate}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {influencer.specialties.map((specialty) => (
-                      <Badge
-                        key={specialty}
-                        variant="outline"
-                        className="rounded-full border-border/60 bg-background/90 px-3 py-1 text-[11px] font-medium text-foreground/70"
-                      >
-                        {specialty}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-                <CardFooter className="relative z-10 flex items-center justify-between border-t border-border/60 pt-6">
-                  <div className="text-xs text-foreground/60">
-                    <p className="font-medium text-foreground/80">Quick booking available</p>
-                    <p>Average response time 12 hours</p>
-                  </div>
-                  <Button size="sm" className="shadow-sm">
-                    View profile
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="pricing" className="bg-gradient-to-br from-background via-background/90 to-primary/10 px-6 py-16 sm:px-10">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14">
-          <div className="space-y-6">
-            <Badge variant="outline" className="rounded-full border-primary/40 text-primary">
-              Plans for every growth stage
-            </Badge>
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              Start with our curated marketplace or upgrade for concierge partnerships.
-            </h2>
-            <p className="text-base text-foreground/70">
-              Every plan includes brief templates, contracts, performance dashboards, and concierge talent sourcing when
-              you need extra hands.
+            <p className="mt-3 text-[0.7rem] uppercase tracking-[0.3em] text-[#a6a9b9]">
+              Looping demo - apps expected to open publicly in about 6 months.
             </p>
-            <ul className="space-y-3 text-sm text-foreground/70">
-              <li className="flex items-start gap-2">
-                <span className="mt-1 size-2.5 rounded-full bg-primary" />
-                Unlimited access to vetted micro influencers and creative partners.
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-1 size-2.5 rounded-full bg-primary" />
-                AI-powered shortlisting based on past campaign performance and audience signals.
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-1 size-2.5 rounded-full bg-primary" />
-                Collaborative workrooms with deliverable timelines, approvals, and content library.
-              </li>
-            </ul>
           </div>
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <Card className="border-border/70 bg-background/95">
-              <CardHeader>
-                <CardTitle className="text-xl">Marketplace</CardTitle>
-                <CardDescription>Perfect for indie brands launching new activations.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-4xl font-semibold">
-                  $149<span className="text-base font-normal text-foreground/50">/mo</span>
-                </p>
-                <ul className="space-y-3 text-sm text-foreground/70">
-                  <li>30 shortlist exports / month</li>
-                  <li>Creator CRM with performance notes</li>
-                  <li>Campaign templates & usage rights tracking</li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full" variant="outline">
-                  Start free trial
-                </Button>
-              </CardFooter>
-            </Card>
-            <Card className="border-primary/40 bg-primary/10">
-              <CardHeader>
-                <CardTitle className="text-xl">Concierge</CardTitle>
-                <CardDescription>Hands-on support for teams scaling creator programs.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-4xl font-semibold">
-                  $649<span className="text-base font-normal text-foreground/60">/mo</span>
-                </p>
-                <ul className="space-y-3 text-sm text-foreground/75">
-                  <li>Dedicated talent strategist & campaign manager</li>
-                  <li>Custom influencer sourcing within 48 hours</li>
-                  <li>Quarterly performance deep dives & benchmarking</li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full">Book a strategy call</Button>
-              </CardFooter>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      <section id="faq" className="bg-background px-6 py-16 sm:px-10">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 lg:flex-row lg:items-start lg:gap-16">
-          <div className="max-w-xl space-y-4">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              What brands ask us before partnering
-            </h2>
-            <p className="text-base text-foreground/70">
-              No lengthy sales calls. Get matched, briefed, and producing content in days.
-            </p>
-            <Button variant="ghost" className="px-0" asChild>
-              <Link href="mailto:hello@micromatch.co">Still have questions? Email our team →</Link>
-            </Button>
-          </div>
-          <div className="flex-1 space-y-6">
-            <Card className="border-border/60">
-              <CardHeader className="gap-3">
-                <CardTitle className="text-lg">How quickly can we launch a campaign?</CardTitle>
-                <CardDescription>
-                  Most briefs are matched with 5-7 recommended creators within 48 hours. Once selects are approved,
-                  we deliver negotiated scopes and shared workrooms the same day.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <Card className="border-border/60">
-              <CardHeader className="gap-3">
-                <CardTitle className="text-lg">Do you verify creators and their engagement?</CardTitle>
-                <CardDescription>
-                  Every profile on MicroMatch is manually reviewed for audience authenticity, brand fit, and production
-                  quality. We refresh metrics every 14 days using direct platform APIs and third-party verification.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <Card className="border-border/60">
-              <CardHeader className="gap-3">
-                <CardTitle className="text-lg">Can you support regional or multilingual campaigns?</CardTitle>
-                <CardDescription>
-                  Yes. Filter by location, language, and cultural audience. Our concierge team curates bilingual
-                  creators and supports local compliance from NDAs to usage rights.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <Card className="border-border/60">
-              <CardHeader className="gap-3">
-                <CardTitle className="text-lg">How does pricing work for mixed deliverables?</CardTitle>
-                <CardDescription>
-                  Use our rate benchmarking to bundle TikToks, Reels, UGC, and stills into one scope. Track content
-                  rights and renewals inside the platform with friendly reminders.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
+
